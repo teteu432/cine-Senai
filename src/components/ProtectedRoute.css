@@ -1,0 +1,12 @@
+/* ============================================================
+   ProtectedRoute.css — tela de carregamento da rota protegida
+   ============================================================ */
+
+.protected-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background-color: var(--bg-primary);
+  color: var(--text-secondary);
+}
