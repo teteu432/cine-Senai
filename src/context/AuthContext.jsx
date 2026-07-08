@@ -32,20 +32,58 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, senha) => {
-    try {
-      const data = await api.auth.login(email, senha);
-      // data contains: token, nome, cargo
-      localStorage.setItem('token', data.token);
-      
-      const userData = { nome: data.nome, cargo: data.cargo, email };
-      localStorage.setItem('user', JSON.stringify(userData));
-      
-      setUser(userData);
-      return userData;
-    } catch (error) {
-      throw error;
-    }
-  };
+
+  if(email === "admin@cinesenai.com" && senha === "123456") {
+
+    const userData = {
+      nome: "Administrador",
+      cargo: "ADMIN",
+      email: email
+    };
+
+    localStorage.setItem(
+      'token',
+      'token-admin-falso'
+    );
+
+    localStorage.setItem(
+      'user',
+      JSON.stringify(userData)
+    );
+
+    setUser(userData);
+
+    return userData;
+  }
+
+
+  if(email === "usuario@cinesenai.com" && senha === "123456") {
+
+    const userData = {
+      nome: "Usuário Teste",
+      cargo: "USER",
+      email: email
+    };
+
+    localStorage.setItem(
+      'token',
+      'token-user-falso'
+    );
+
+    localStorage.setItem(
+      'user',
+      JSON.stringify(userData)
+    );
+
+    setUser(userData);
+
+    return userData;
+  }
+
+
+  throw new Error("Email ou senha inválidos");
+
+};
 
   const register = async (nome, email, senha) => {
     try {

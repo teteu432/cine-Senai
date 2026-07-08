@@ -29,6 +29,8 @@
   Na semana da integração, só precisamos trocar a URL
   dentro do vite.config.js — este arquivo não muda.
 */
+import database from "../data/database";
+import filmes from "../data/filmes";
 const BASE_URL = '';
 
 
@@ -287,7 +289,11 @@ export const api = {
       Retorna: array de filmes
         [ { id, titulo, genero, duracaoMinutos, urlPoster, descricao } ]
     */
-    listar: () => request('/api/filmes'),
+    listar: async () => {
+
+    return database.filmes;
+
+},
 
 
     /*
@@ -297,7 +303,13 @@ export const api = {
       URL: /api/filmes/3  (se id = 3)
       Retorna: { id, titulo, genero, duracaoMinutos, urlPoster, descricao }
     */
-    buscarPorId: (id) => request(`/api/filmes/${id}`),
+   buscarPorId: async (id) => {
+
+    return database.filmes.find(
+        filme => filme.id === Number(id)
+    );
+
+},
     /*
       As crases `` permitem inserir variáveis dentro da string.
       ${id} será substituído pelo valor do parâmetro id.
@@ -312,10 +324,17 @@ export const api = {
       URL: /api/filmes
       Body: objeto com os dados do filme
     */
-    criar: (filme) => request('/api/filmes', {
-      method: 'POST',
-      body: JSON.stringify(filme),
-    }),
+   criar: async (filme) => {
+
+    filme.id = Date.now();
+
+    filme.urlPoster = filme.urlPoster || "";
+
+    database.filmes.push(filme);
+
+    return filme;
+
+},
 
 
     /*
@@ -338,9 +357,16 @@ export const api = {
       URL: /api/filmes/3
       Sem body — o ID na URL já identifica qual remover
     */
-    deletar: (id) => request(`/api/filmes/${id}`, {
-      method: 'DELETE',
-    }),
+   deletar: async (id) => {
+
+    database.filmes =
+        database.filmes.filter(
+            filme => filme.id !== Number(id)
+        );
+
+    return true;
+
+},
 
 
     /*
@@ -358,14 +384,26 @@ export const api = {
       URL: /api/filmes/3/imagem
       Body: FormData com o campo "imagem" (arquivo)
     */
-    uploadImagem: (id, arquivo) => {
-      const formData = new FormData();
-      formData.append('imagem', arquivo);
-      return request(`/api/filmes/${id}/imagem`, {
-        method: 'POST',
-        body: formData,
-      });
-    },
+    uploadImagem: async (id, arquivo) => {
+
+    const filme = database.filmes.find(
+        filme => filme.id === Number(id)
+    );
+
+    if (!filme) {
+        throw new Error("Filme não encontrado");
+    }
+
+
+    const imagemUrl = URL.createObjectURL(arquivo);
+
+
+    filme.urlPoster = imagemUrl;
+
+
+    return filme;
+
+},
 
 
     /*
@@ -386,46 +424,45 @@ export const api = {
 
   salas: {
 
-    /*
-      Lista todas as salas de cinema.
+    listar: async () => {
 
-      Método: GET
-      URL: /api/salas
-    */
-    listar: () => request('/api/salas'),
+        return database.salas;
+
+    },
 
 
-    /*
-      Busca uma sala pelo ID.
+    buscarPorId: async (id) => {
 
-      Método: GET
-      URL: /api/salas/2
-    */
-    buscarPorId: (id) => request(`/api/salas/${id}`),
+        return database.salas.find(
+            sala => sala.id === Number(id)
+        );
 
-
-    /*
-      Cria uma nova sala (somente admin).
-
-      Método: POST
-      URL: /api/salas
-    */
-    criar: (sala) => request('/api/salas', {
-      method: 'POST',
-      body: JSON.stringify(sala),
-    }),
+    },
 
 
-    /*
-      Remove uma sala (somente admin).
+    criar: async (sala) => {
 
-      Método: DELETE
-      URL: /api/salas/2
-    */
-    deletar: (id) => request(`/api/salas/${id}`, {
-      method: 'DELETE',
-    }),
-  },
+        sala.id = Date.now();
+
+        database.salas.push(sala);
+
+        return sala;
+
+    },
+
+
+    deletar: async (id) => {
+
+        database.salas =
+            database.salas.filter(
+                sala => sala.id !== Number(id)
+            );
+
+        return true;
+
+    },
+
+},
 
 
   // ===================================================================
@@ -443,7 +480,15 @@ export const api = {
       Método: GET
       URL: /api/sessoes?data=2026-06-11
     */
-    listarPorData: (data) => request(`/api/sessoes?data=${data}`),
+  listarPorData: async (data) => {
+
+    return database.sessoes.filter(
+        sessao => 
+            sessao.data == data ||
+            sessao.data.replaceAll("/", "-") == data
+    );
+
+},
 
 
     /*
@@ -452,8 +497,43 @@ export const api = {
       Método: GET
       URL: /api/sessoes?filmeId=3
     */
-    listarPorFilme: (filmeId) => request(`/api/sessoes?filmeId=${filmeId}`),
+    listarPorFilme: async (filmeId) => {
 
+    return database.sessoes
+        .filter(
+            sessao => sessao.filmeId === Number(filmeId)
+        )
+        .map(sessao => {
+
+            const filme = database.filmes.find(
+                filme => filme.id === sessao.filmeId
+            );
+
+
+            const sala = database.salas.find(
+                sala => sala.id === sessao.salaId
+            );
+
+
+            return {
+                ...sessao,
+
+                inicio: `${sessao.data}T${sessao.horario}:00`,
+
+                preco: sessao.preco || 30,
+
+                filme: filme || {
+                    titulo: "Filme não encontrado"
+                },
+
+                sala: sala || {
+                    nome: "Sala não encontrada"
+                }
+            };
+
+        });
+
+},
 
     /*
       Busca uma sessão pelo ID.
@@ -461,7 +541,13 @@ export const api = {
       Método: GET
       URL: /api/sessoes/7
     */
-    buscarPorId: (id) => request(`/api/sessoes/${id}`),
+    buscarPorId: async (id) => {
+
+    return database.sessoes.find(
+        sessao => sessao.id === Number(id)
+    );
+
+},
 
 
     /*
@@ -473,7 +559,21 @@ export const api = {
       Método: GET
       URL: /api/sessoes/7/assentos
     */
-    listarAssentos: (id) => request(`/api/sessoes/${id}/assentos`),
+    listarAssentos: async (id) => {
+
+    const sessao = database.sessoes.find(
+        sessao => sessao.id === Number(id)
+    );
+
+
+    if (!sessao) {
+        return [];
+    }
+
+
+    return sessao.assentos;
+
+},
 
 
     /*
@@ -482,10 +582,31 @@ export const api = {
       Método: POST
       URL: /api/sessoes
     */
-    criar: (sessao) => request('/api/sessoes', {
-      method: 'POST',
-      body: JSON.stringify(sessao),
-    }),
+  criar: async (sessao) => {
+
+    sessao.id = Date.now();
+
+    sessao.preco = sessao.preco || 30;
+
+    sessao.assentos = [];
+
+    for(let i = 1; i <= 50; i++){
+
+        sessao.assentos.push({
+            id:i,
+            numero:`A${i}`,
+            ocupado:false
+        });
+
+    }
+
+    database.sessoes.push(sessao);
+
+    console.log(database.sessoes);
+
+    return sessao;
+
+},
 
 
     /*
@@ -494,10 +615,18 @@ export const api = {
       Método: DELETE
       URL: /api/sessoes/7
     */
-    deletar: (id) => request(`/api/sessoes/${id}`, {
-      method: 'DELETE',
-    }),
-  },
+        deletar: async (id) => {
+
+        database.sessoes =
+            database.sessoes.filter(
+                sessao => sessao.id !== Number(id)
+            );
+
+        return true;
+
+    },
+
+  }, // <-- ESSA CHAVE ESTAVA FALTANDO
 
 
   // ===================================================================
